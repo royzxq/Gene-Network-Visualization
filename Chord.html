@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Gene network</title>
+<link rel="stylesheet" href="jquery-ui/jquery-ui.css"/></link>
+
+<style>
+
+#circle circle {
+fill: none;
+pointer-events: all;
+}
+ 
+.group path {
+fill-opacity: .5;
+}
+
+path.text{
+color: white;
+}
+ 
+path.chord {
+stroke-width: 0.2px;
+}
+ 
+#circle:hover path.fade {
+display: none;
+}
+
+body {
+background: #252525;
+/*background: #ffffff;*/
+margin: 1em auto 4em auto;
+position: relative;
+width: 960px;
+color:white;
+}
+
+header {
+font-size: 48px;
+font-weight: 300;
+letter-spacing: -2px;
+margin: .3em 0 .1em 0;
+color: white;
+}
+ 
+aside {
+font-size: 20px;
+right: -1;
+position: absolute;
+width: 200px;
+color: white;
+}
+ 
+</style>
+ 
+<header id = 'header'></header>
+ 
+<body>
+
+<form action="galaxylayout.html">
+    <fieldset>
+        <input class='submitbutton' type="submit" value ='return'/>
+    </fieldset>
+</form>
+
+
+<aside>Mouseover to focus on link of each gene.</aside>
+ 
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.13/d3.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3-tip/0.6.3/d3-tip.min.js"></script>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="jquery-ui/jquery-ui.min.js"></script>
+<script src="selector.js"></script>
+
+<script>
+
+$("input").button().click(function(event){
+    event.preventDefault;
+    $("form").attr("action","galaxylayout.html");
+});
+
+var parameter = QueryString();
+
+var subnet = parameter.subnet;
+
+var geneInfoFile = subnet + "_Gene_info.csv";
+var matrixFile = "matrixgene" + subnet + ".json";
+
+$("#header").text("Gene Network: " + subnet) ;
+
+
+    var width = window.innerWidth,
+height = window.innerHeight,
+outerRadius = Math.min(width, height) / 2 - 40,
+innerRadius = outerRadius - 24;
+
+
+
+var arc = d3.svg.arc()
+.innerRadius(innerRadius)
+.outerRadius(outerRadius);
+ 
+var layout = d3.layout.chord()
+.padding(0)
+.sortSubgroups(d3.descending)
+.sortChords(d3.ascending);
+ 
+var path = d3.svg.chord()
+.radius(innerRadius);
+ 
+var svg = d3.select("body").append("svg")
+.attr("width", width)
+.attr("height", height)
+.append("g")
+.attr("id", "circle")
+.attr("transform", "translate(" + width / 2 + "," + (height / 2)+ ")");
+
+
+svg.append("circle")
+.attr("r", outerRadius);
+
+console.log(matrixFile);
+
+d3.csv(geneInfoFile, function(genes) {
+d3.json(matrixFile, function(matrix) {
+ 
+// Compute the chord layout.
+layout.matrix(matrix);
+ 
+// Add a group per neighborhood.
+var group = svg.selectAll(".group")
+.data(layout.groups)
+.enter().append("g")
+.attr("class", "group")
+.on("mouseover", mouseover);
+
+ 
+// Add the group arc.
+var groupPath = group.append("path")
+.attr("id", function(d, i) { return "group" + i; })
+.attr("d", arc)
+.style("fill", function(d, i) { return genes[i].color; })
+
+
+// Add a text label.
+var groupText = group.append("text")
+.attr("fill","white")
+.attr("x", 8)
+.attr("dy", -4);
+
+ 
+groupText.append("textPath")
+.attr("xlink:href", function(d, i) { return "#group" + i; })
+.text(function(d, i) { return genes[i].name ; }); 
+ 
+// Remove the labels that don't fit.
+groupText.filter(function(d, i) { return groupPath[0][i].getTotalLength()/2 -26 < this.getComputedTextLength(); })
+.remove();
+ 
+// Add the chords.
+var chord = svg.selectAll(".chord")
+.data(layout.chords)
+.enter().append("path")
+.attr("class","chord")
+.attr("stroke", function(d) {return genes[d.source.index].color; })
+.style("fill", function(d) {return genes[d.source.index].color; })
+.attr("d", path);
+ 
+// Add an elaborate mouseover title for each chord.
+chord.append("title").text(function(d) {
+return genes[d.source.index].name
++ " - " + genes[d.target.index].name;
+});
+ 
+function mouseover(d, i) {
+chord.classed("fade", function(p) {
+return p.source.index != i
+&& p.target.index != i;});}
+});
+});
+ 
+</script>
+
+ 
+<footer>
+
+</footer>
+
+</body>

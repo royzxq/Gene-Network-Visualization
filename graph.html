@@ -1,0 +1,196 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="jquery-ui/jquery-ui.min.css"/></link>
+
+<style>
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .4;
+}
+
+.d3-tip {
+  line-height: 0.5;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 1px;
+}
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+
+</style>
+
+
+<title>force layout of gene network</title>
+
+
+</head>
+
+<body>
+<form action="galaxylayout.html">
+    <input type="submit" value="return"/>
+</form>
+
+
+<!--<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.13/d3.min.js"></script>-->
+<script src="d3.v3.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3-tip/0.6.3/d3-tip.min.js"></script>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="jquery-ui/jquery-ui.min.js"></script>
+<script src="colorbrewer.js"></script>
+<script src="selector.js"></script>
+
+<script>
+
+
+
+$("input").button().click(function(event){
+    event.preventDefault;
+    $("form").attr("action","galaxylayout.html");
+})
+
+var parameter = QueryString();
+
+//var step = 1;
+var step = parameter.mutable;
+var subnet = parameter.subnet;
+
+if (! step){
+    step = 2;
+}
+if(! subnet){
+    subnet = 'ERBB2';
+}
+
+var filename = subnet+'_'+step+'.json';
+
+var datafolder = 'forcedata/';
+
+filename = datafolder + filename;
+console.log(filename);
+
+//Size of region to render on
+
+var width = window.innerWidth,
+        height = window.innerHeight;
+
+//D3 force directed layout
+//Try playing with the charge and link distance
+var force = d3.layout.force()
+    .charge(-100)
+    .linkDistance(20)
+    .size([width, height]);
+
+  //initialize tooltip
+var tip = d3.tip()
+    .attr("class","d3-tip")
+    .html(function(d){return "name: " + d.name+" Symbol: "+d.Symbol+" chromosome: "+d.chromosome;});
+
+          
+//Add our canvas
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .call(tip);   
+    svg.append("text")
+    .style("font-size","15px")
+    .attr("x",10)
+    .attr("y",30)
+    .attr("fill","black")
+    .text("move mouse over the node to see information")
+    svg.append("text")
+    .style("font-size","15px")
+    .attr("x",10)
+    .attr("y",50)
+    .attr("fill","black")
+    .text("drag nodes to move the graph")
+
+//Set color range
+var color = d3.scale.ordinal()
+    .domain([0, 10])
+    .range(colorbrewer.RdBu[8])
+
+
+
+//Select the miserables data 
+//change for different steps
+d3.json(filename, function(error, graph) {
+  force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+
+
+
+//Add the links
+  var link = svg.selectAll(".link")
+      .data(graph.links)
+      .enter().append("line")
+      .attr("class", "link")
+      //.filter
+      //.style("stroke-width", function(d) { return Math.sqrt(d.); });
+
+//Add the nodes
+  var node =svg.selectAll(".node")
+      .data(graph.nodes)
+      .enter().append("g")     
+      .call(force.drag)
+      .on("mouseover",tip.show)
+      .on("mouseout",tip.hide)
+      
+
+  node.append("circle")
+      .attr("r", function(d){
+              return Math.log(d.r) * 5;
+          })
+      .attr("fill",  function(d) {if (d.chromosome == "1" || d.chromosome =="2" || d.chromosome == "3" || d.chromosome == "4") { return 'rgb(141,211,199)'; } 
+                                 if (d.chromosome == "5" || d.chromosome == "6" || d.chromosome == "7" || d.chromosome == "8") {return 'rgb(255,255,179)';}
+                                 if  (d.chromosome == "9" || d.chromosome == "10" || d.chromosome == "11" || d.chromosome == "12"){return 'rgb(190,186,218)';}
+         if  (d.chromosome == "13" || d.chromosome == "14" || d.chromosome == "15" || d.chromosome == "16"){return 'rgb(251,128,114)';}
+                                 if  (d.chromosome == "17" || d.chromosome == "18" || d.chromosome == "19" || d.chromosome == "20"){return 'rgb(128,177,211';} 
+                                 else {return 'rgb(253,180,98)';} 
+               })
+      //.filter(function(d){return d.r>0})
+      .attr("class","node")
+      
+
+//Update stuff for animation:
+//   This takes the physics simulation for the force directed graph and
+//   sets the location of the nodes and edges to the new positions
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("transform", function(d){return "translate("+d.x +","+d.y+")";});
+
+     });
+
+
+
+});
+</script>
+</body>
+</html>
